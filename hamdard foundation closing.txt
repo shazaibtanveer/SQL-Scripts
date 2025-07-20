@@ -1,0 +1,30 @@
+Declare 
+@clientindex int = 1314,
+@fromdate date = '2024-10-21',
+@todate date = '2024-11-20'
+Select ROW_NUMBER () Over (Order By s.EmployeeIndex) Sno,
+EmployeeId,
+S.Employeeindex,
+EmployeeName,
+Divisionname,
+Locationname,
+Departmentname,
+UnitName,
+PositionName 'Designation',
+Grade,
+ServiceStatusDesc,
+DATEDIFF(day, @fromdate, @Todate) + 1 'Total Days',
+SUM(Case When IsAbsent = 1 then 1 Else 0 End) 'Absent Days',
+SUM(Case When S.LeaveStatus = 2 and S.LeaveType = 5 then 1 Else 0 End) 'Approved LWOP',
+SUM(ISNULL(CONVERT(FLOAT, ROUND((OThh*60+OTMi)/60.0,2)), 0)) 'Calculated OT',
+SUM(ISNULL(CONVERT(FLOAT, ROUND((ApOThh*60+ApOTMi)/60.0,2)), 0)) 'Approved OT',
+CAST(CONCAT(FLOOR(SUM(ApOTHH * 60 + ApOTMI) / 60),':', RIGHT(CONCAT('0', SUM(OTHH * 60 + OTMI) % 60), 2)) AS VARCHAR(10)) AS 'Calculated OverTime',
+CAST(CONCAT(FLOOR(SUM(ApOTHH * 60 + ApOTMI) / 60),':', RIGHT(CONCAT('0', SUM(ApOTHH * 60 + ApOTMI) % 60), 2)) AS VARCHAR(10)) AS 'Approved OverTime'
+
+
+from (tm_Summary S
+left join VwEmpDetail E on S.EmployeeIndex = E.EmployeeIndex
+LEFT outer Join LeaveDetail ld on ld.EmployeeIndex = S.EmployeeIndex and S.AtDate = ld.FromDate
+)
+Where S.ClientIndex = @clientindex and AtDate between @fromdate and @Todate
+Group By s.EmployeeIndex,E.EmployeeId,EmployeeName,divisionname,locationname,Departmentname,UnitName,PositionName,Grade,ServiceStatusDesc

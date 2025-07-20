@@ -1,0 +1,32 @@
+INSERT INTO tm_Empholiday (
+    EmployeeIndex,
+    HolidayDate,
+    IsOff,
+    Remarks,
+    EntryBy,
+    EntryDate,
+    HolidayType,
+    IsGazetted,
+    UserEmpIndex
+)
+SELECT 
+    e.EmployeeIndex,
+    d.HolidayDate,
+    1 AS IsOff,
+    NULL AS Remarks,
+    9380 AS EntryBy,
+    GETDATE() AS EntryDate,
+    129 AS HolidayType,
+    1 AS IsGazetted,
+    300136 AS UserEmpIndex
+FROM 
+    employee e
+CROSS JOIN (
+    SELECT DATEADD(DAY, number, '2025-06-01') AS HolidayDate
+    FROM master..spt_values
+    WHERE type = 'P' 
+      AND DATEADD(DAY, number, '2025-06-01') <= '2025-07-27'
+      AND DATENAME(WEEKDAY, DATEADD(DAY, number, '2025-06-01')) NOT IN ('Saturday', 'Sunday')
+) d
+WHERE 
+    e.clientindex = 1318 and e.ServiceStatus IN (1, 6);

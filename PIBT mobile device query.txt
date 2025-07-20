@@ -1,0 +1,13 @@
+select E.Territoryname,E.unitname,E.Regionname,E.locationname,E.subdepartmentname,E.Departmentname,E.EmploymentType,Ad.ActiveDeviceIndex,e.employeeid,Ad.employeeindex,e.employeename,Ad.deviceid,Ad.DeviceType,Ad.DeviceName,Ad.IsActive,AD.ActivationTime
+from app_ActiveDevice AD
+inner join vwempdetail e on ad.employeeindex  = e.employeeindex
+where Ad.employeeindex in (select employeeindex from employee where Clientindex  = 1359 and servicestatus  = 1 ) 
+order by Ad.employeeindex
+
+
+
+
+
+delete from App_Login where ActiveDeviceIndex = 265701
+delete from App_Settings where ActiveDeviceIndex = 265701
+delete from app_ActiveDevice where ActiveDeviceIndex = 265701

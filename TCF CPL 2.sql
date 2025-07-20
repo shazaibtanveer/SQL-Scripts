@@ -1,0 +1,58 @@
+DECLARE
+    @Today DATE = GETDATE(),
+    @StartDate DATE,
+    @EndDate DATE = GETDATE(),
+	@clientindex int = 1361
+
+
+IF DAY(@Today) >= 21
+    SET @StartDate = DATEADD(DAY, 20, DATEADD(MONTH, DATEDIFF(MONTH, 0, @Today), 0)); -- 21st of the current month
+ELSE
+    SET @StartDate = DATEADD(DAY, 20, DATEADD(MONTH, DATEDIFF(MONTH, 0, @Today) - 1, 0)); -- 21st of the previous month
+
+;WITH DateRange AS (
+    SELECT @StartDate AS Attendancedate
+    UNION ALL
+    SELECT DATEADD(DAY, 1, Attendancedate)
+    FROM DateRange
+    WHERE DATEADD(DAY, 1, Attendancedate) <= @EndDate
+),
+Employees AS (
+    SELECT e.employeeindex
+    FROM employee e
+    WHERE e.clientindex = @clientindex
+),
+--CPL Calculation
+CPLCalculation AS (
+    SELECT 
+	ts.Atdate,
+	ts.employeeindex,
+	ts.WorkingTime As AdjustedTime,
+	case when ts.isholiday = 1 then 'Off Day' else 'Work Day' end as DayType,
+	case when ts.isholiday = 1 AND ts.WorkingTime between '01:00' and '04:00' then 0.5 Else 1 End As Totaldays
+    FROM tm_summary ts
+    JOIN Employees re ON ts.employeeindex = re.employeeindex
+    JOIN DateRange dr ON ts.Atdate = dr.Attendancedate
+    WHERE ts.adjruleindex = 261
+    AND ((ts.isholiday = 0 AND ts.WorkingTime >= '12:00') 
+         OR (ts.isholiday = 1 AND ts.WorkingTime >= '01:00'))
+)
+
+INSERT INTO leavedetail (LeaveIndex, EmployeeIndex, LeaveType, SerialNo, FromDate, ToDate, TotalDays, Reason, LeaveStatus, LeaveEncashment, LeaveAdjustment, EntryBy, EntryDate)
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY e.AtDate) + ISNULL((SELECT MAX(LeaveIndex) FROM leavedetail), 0) AS LeaveIndex,
+    e.EmployeeIndex,
+    9 AS LeaveType,
+    1 AS SerialNo,
+    e.AtDate AS FromDate,
+    e.AtDate AS ToDate,
+    e.Totaldays,
+    'InLieu against: ' + FORMAT(e.Atdate, 'yyyy-MM-dd (dddd)') +' (' + e.DayType + ') ' + ' Working Time: ' + e.AdjustedTime AS Reason,
+    12 AS LeaveStatus,
+    0 AS LeaveEncashment,
+    0 AS LeaveAdjustment,
+    262663 AS EntryBy,
+    GETDATE() AS EntryDate
+FROM CPLCalculation e
+WHERE NOT EXISTS (SELECT 1 FROM leavedetail ld WHERE ld.FromDate = e.AtDate AND ld.EmployeeIndex = e.EmployeeIndex and ld.LeaveType = 9 and ld.LeaveStatus = 12)
+OPTION (MAXRECURSION 0)
